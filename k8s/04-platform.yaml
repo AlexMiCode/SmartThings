@@ -16,6 +16,7 @@ spec:
       containers:
         - name: config-server
           image: smartthings/config-server:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8888
           env:
@@ -77,6 +78,7 @@ spec:
       containers:
         - name: discovery-server
           image: smartthings/discovery-server:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8761
           env:
@@ -133,6 +135,7 @@ spec:
       containers:
         - name: user-service
           image: smartthings/user-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8091
           env:
@@ -206,6 +209,7 @@ spec:
       containers:
         - name: product-service
           image: smartthings/product-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8092
           env:
@@ -305,6 +309,7 @@ spec:
       containers:
         - name: notification-service
           image: smartthings/notification-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8094
           env:
@@ -373,6 +378,7 @@ spec:
       containers:
         - name: order-service
           image: smartthings/order-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8093
           env:
@@ -441,6 +447,7 @@ spec:
       containers:
         - name: api-gateway
           image: smartthings/api-gateway:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
           env:
@@ -497,6 +504,7 @@ spec:
       containers:
         - name: frontend
           image: smartthings/frontend:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
           readinessProbe:
