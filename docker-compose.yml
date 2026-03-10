@@ -1,0 +1,251 @@
+services:
+  redis:
+    image: redis:7.4-alpine
+    container_name: smartthings-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  user-db:
+    image: postgres:17-alpine
+    container_name: smartthings-user-db
+    environment:
+      POSTGRES_DB: user_service
+      POSTGRES_USER: smartthings
+      POSTGRES_PASSWORD: smartthings
+    ports:
+      - "5433:5432"
+    volumes:
+      - user-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartthings -d user_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  product-db:
+    image: postgres:17-alpine
+    container_name: smartthings-product-db
+    environment:
+      POSTGRES_DB: product_service
+      POSTGRES_USER: smartthings
+      POSTGRES_PASSWORD: smartthings
+    ports:
+      - "5434:5432"
+    volumes:
+      - product-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartthings -d product_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  order-db:
+    image: postgres:17-alpine
+    container_name: smartthings-order-db
+    environment:
+      POSTGRES_DB: order_service
+      POSTGRES_USER: smartthings
+      POSTGRES_PASSWORD: smartthings
+    ports:
+      - "5435:5432"
+    volumes:
+      - order-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartthings -d order_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  notification-db:
+    image: postgres:17-alpine
+    container_name: smartthings-notification-db
+    environment:
+      POSTGRES_DB: notification_service
+      POSTGRES_USER: smartthings
+      POSTGRES_PASSWORD: smartthings
+    ports:
+      - "5436:5432"
+    volumes:
+      - notification-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartthings -d notification_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  config-server:
+    build:
+      context: .
+      dockerfile: config-server/Dockerfile
+    container_name: smartthings-config-server
+    environment:
+      CONFIG_REPO_LOCATION: file:/workspace/config-repo
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./config-repo:/workspace/config-repo:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health | grep UP || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+
+  discovery-server:
+    build:
+      context: .
+      dockerfile: discovery-server/Dockerfile
+    container_name: smartthings-discovery-server
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_SERVER_URL: http://discovery-server:8761/eureka/
+    ports:
+      - "8761:8761"
+    depends_on:
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health | grep UP || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    container_name: smartthings-user-service
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_SERVER_URL: http://discovery-server:8761/eureka/
+      USER_DB_URL: jdbc:postgresql://user-db:5432/user_service
+      USER_DB_USERNAME: smartthings
+      USER_DB_PASSWORD: smartthings
+    ports:
+      - "8091:8091"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      user-db:
+        condition: service_healthy
+
+  product-service:
+    build:
+      context: .
+      dockerfile: product-service/Dockerfile
+    container_name: smartthings-product-service
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_SERVER_URL: http://discovery-server:8761/eureka/
+      PRODUCT_DB_URL: jdbc:postgresql://product-db:5432/product_service
+      PRODUCT_DB_USERNAME: smartthings
+      PRODUCT_DB_PASSWORD: smartthings
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "8092:8092"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      product-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    container_name: smartthings-notification-service
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_SERVER_URL: http://discovery-server:8761/eureka/
+      NOTIFICATION_DB_URL: jdbc:postgresql://notification-db:5432/notification_service
+      NOTIFICATION_DB_USERNAME: smartthings
+      NOTIFICATION_DB_PASSWORD: smartthings
+    ports:
+      - "8094:8094"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      notification-db:
+        condition: service_healthy
+
+  order-service:
+    build:
+      context: .
+      dockerfile: order-service/Dockerfile
+    container_name: smartthings-order-service
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_SERVER_URL: http://discovery-server:8761/eureka/
+      ORDER_DB_URL: jdbc:postgresql://order-db:5432/order_service
+      ORDER_DB_USERNAME: smartthings
+      ORDER_DB_PASSWORD: smartthings
+    ports:
+      - "8093:8093"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      order-db:
+        condition: service_healthy
+      product-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: smartthings-api-gateway
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_SERVER_URL: http://discovery-server:8761/eureka/
+    ports:
+      - "8080:8080"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+      product-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8080
+    container_name: smartthings-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      api-gateway:
+        condition: service_started
+
+volumes:
+  user-db-data:
+  product-db-data:
+  order-db-data:
+  notification-db-data:
+

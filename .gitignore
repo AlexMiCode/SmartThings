@@ -1,0 +1,11 @@
+/.gradle/
+/build/
+/**/build/
+/frontend/node_modules/
+/frontend/dist/
+/data/
+/.idea/
+/*.iml
+/_tmp_wrapper/
+/.vscode/
+

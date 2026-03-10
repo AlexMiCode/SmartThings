@@ -1,0 +1,19 @@
+server:
+  port: 8091
+
+spring:
+  datasource:
+    url: ${USER_DB_URL:jdbc:postgresql://localhost:5433/user_service}
+    driver-class-name: org.postgresql.Driver
+    username: ${USER_DB_USERNAME:smartthings}
+    password: ${USER_DB_PASSWORD:smartthings}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          lob:
+            non_contextual_creation: true

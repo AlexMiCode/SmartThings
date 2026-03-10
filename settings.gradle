@@ -1,0 +1,11 @@
+rootProject.name = 'smartthings-store'
+
+include 'common'
+include 'config-server'
+include 'discovery-server'
+include 'api-gateway'
+include 'user-service'
+include 'product-service'
+include 'order-service'
+include 'notification-service'
+

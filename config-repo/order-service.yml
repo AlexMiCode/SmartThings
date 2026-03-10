@@ -1,0 +1,32 @@
+server:
+  port: 8093
+
+spring:
+  datasource:
+    url: ${ORDER_DB_URL:jdbc:postgresql://localhost:5435/order_service}
+    driver-class-name: org.postgresql.Driver
+    username: ${ORDER_DB_USERNAME:smartthings}
+    password: ${ORDER_DB_PASSWORD:smartthings}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      product-service:
+        sliding-window-size: 5
+        minimum-number-of-calls: 3
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+  timelimiter:
+    instances:
+      product-service:
+        timeout-duration: 2s

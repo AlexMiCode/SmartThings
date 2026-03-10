@@ -1,0 +1,86 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.4.2)
+
+2026-03-10T20:15:38.757+03:00  INFO 20384 --- [user-service] [           main] c.s.users.UserServiceApplication         : Starting UserServiceApplication v0.1.0-SNAPSHOT using Java 23.0.2 with PID 20384 (C:\Users\lehax\OneDrive\Documents\SmartThings\user-service\build\libs\user-service-0.1.0-SNAPSHOT.jar started by lehax in C:\Users\lehax\OneDrive\Documents\SmartThings)
+2026-03-10T20:15:38.767+03:00  INFO 20384 --- [user-service] [           main] c.s.users.UserServiceApplication         : No active profile set, falling back to 1 default profile: "default"
+2026-03-10T20:15:38.917+03:00  INFO 20384 --- [user-service] [           main] o.s.c.c.c.ConfigServerConfigDataLoader   : Fetching config from server at : http://localhost:8888
+2026-03-10T20:15:38.923+03:00  INFO 20384 --- [user-service] [           main] o.s.c.c.c.ConfigServerConfigDataLoader   : Located environment: name=user-service, profiles=[default], label=null, version=null, state=null
+2026-03-10T20:15:44.666+03:00  INFO 20384 --- [user-service] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-03-10T20:15:46.073+03:00  INFO 20384 --- [user-service] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 1379 ms. Found 1 JPA repository interface.
+2026-03-10T20:15:47.241+03:00  INFO 20384 --- [user-service] [           main] o.s.cloud.context.scope.GenericScope     : BeanFactory id=8690aa05-4967-3e0d-a771-c1129906cbd6
+2026-03-10T20:15:49.938+03:00  INFO 20384 --- [user-service] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8091 (http)
+2026-03-10T20:15:49.969+03:00  INFO 20384 --- [user-service] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-03-10T20:15:49.971+03:00  INFO 20384 --- [user-service] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.34]
+2026-03-10T20:15:50.095+03:00  INFO 20384 --- [user-service] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-03-10T20:15:50.105+03:00  INFO 20384 --- [user-service] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 11162 ms
+2026-03-10T20:15:54.170+03:00  INFO 20384 --- [user-service] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-03-10T20:15:54.359+03:00  INFO 20384 --- [user-service] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.5.Final
+2026-03-10T20:15:54.500+03:00  INFO 20384 --- [user-service] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-03-10T20:15:55.362+03:00  INFO 20384 --- [user-service] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-03-10T20:15:55.433+03:00  INFO 20384 --- [user-service] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-03-10T20:16:05.863+03:00  INFO 20384 --- [user-service] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn1: url=jdbc:h2:file:./data/user-service-db user=SA
+2026-03-10T20:16:05.870+03:00  INFO 20384 --- [user-service] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-03-10T20:16:06.051+03:00  INFO 20384 --- [user-service] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 2.3.232
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-03-10T20:16:08.590+03:00  INFO 20384 --- [user-service] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-03-10T20:16:08.729+03:00  INFO 20384 --- [user-service] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-03-10T20:16:12.449+03:00  WARN 20384 --- [user-service] [           main] .s.s.UserDetailsServiceAutoConfiguration : 
+
+Using generated security password: b1821d7d-bfce-469e-9a67-f6616d745c14
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2026-03-10T20:16:12.464+03:00  INFO 20384 --- [user-service] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+2026-03-10T20:16:16.395+03:00  INFO 20384 --- [user-service] [           main] o.s.b.a.h2.H2ConsoleAutoConfiguration    : H2 console available at '/h2-console'. Database available at 'jdbc:h2:file:./data/user-service-db'
+2026-03-10T20:16:16.540+03:00  INFO 20384 --- [user-service] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-03-10T20:16:16.822+03:00  INFO 20384 --- [user-service] [           main] DiscoveryClientOptionalArgsConfiguration : Eureka HTTP Client uses RestTemplate.
+2026-03-10T20:16:16.971+03:00  WARN 20384 --- [user-service] [           main] iguration$LoadBalancerCaffeineWarnLogger : Spring Cloud LoadBalancer is currently working with the default cache. While this cache implementation is useful for development and tests, it's recommended to use Caffeine cache in production.You can switch to using Caffeine cache, by adding it and org.springframework.cache.caffeine.CaffeineCacheManager to the classpath.
+2026-03-10T20:16:17.101+03:00  INFO 20384 --- [user-service] [           main] o.s.c.n.eureka.InstanceInfoFactory       : Setting initial instance status as: STARTING
+2026-03-10T20:16:17.158+03:00  INFO 20384 --- [user-service] [           main] com.netflix.discovery.DiscoveryClient    : Initializing Eureka in region us-east-1
+2026-03-10T20:16:17.165+03:00  INFO 20384 --- [user-service] [           main] c.n.d.s.r.aws.ConfigClusterResolver      : Resolving eureka endpoints via configuration
+2026-03-10T20:16:17.178+03:00  INFO 20384 --- [user-service] [           main] com.netflix.discovery.DiscoveryClient    : Disable delta property : false
+2026-03-10T20:16:17.179+03:00  INFO 20384 --- [user-service] [           main] com.netflix.discovery.DiscoveryClient    : Single vip registry refresh property : null
+2026-03-10T20:16:17.179+03:00  INFO 20384 --- [user-service] [           main] com.netflix.discovery.DiscoveryClient    : Force full registry fetch : false
+2026-03-10T20:16:17.179+03:00  INFO 20384 --- [user-service] [           main] com.netflix.discovery.DiscoveryClient    : Application is null : false
+2026-03-10T20:16:17.182+03:00  INFO 20384 --- [user-service] [           main] com.netflix.discovery.DiscoveryClient    : Registered Applications size is zero : true
+2026-03-10T20:16:17.183+03:00  INFO 20384 --- [user-service] [           main] com.netflix.discovery.DiscoveryClient    : Application version is -1: true
+2026-03-10T20:16:17.183+03:00  INFO 20384 --- [user-service] [           main] com.netflix.discovery.DiscoveryClient    : Getting all instance registry info from the eureka server
+2026-03-10T20:16:19.016+03:00  INFO 20384 --- [user-service] [           main] com.netflix.discovery.DiscoveryClient    : The response status is 200
+2026-03-10T20:16:19.022+03:00  INFO 20384 --- [user-service] [           main] com.netflix.discovery.DiscoveryClient    : Starting heartbeat executor: renew interval is: 30
+2026-03-10T20:16:19.025+03:00  INFO 20384 --- [user-service] [           main] c.n.discovery.InstanceInfoReplicator     : InstanceInfoReplicator onDemand update allowed rate per min is 4
+2026-03-10T20:16:19.027+03:00  INFO 20384 --- [user-service] [           main] com.netflix.discovery.DiscoveryClient    : Discovery Client initialized at timestamp 1773162979027 with initial instances count: 0
+2026-03-10T20:16:19.044+03:00  INFO 20384 --- [user-service] [           main] o.s.c.n.e.s.EurekaServiceRegistry        : Registering application USER-SERVICE with eureka with status UP
+2026-03-10T20:16:19.045+03:00  INFO 20384 --- [user-service] [           main] com.netflix.discovery.DiscoveryClient    : Saw local status change event StatusChangeEvent [timestamp=1773162979045, current=UP, previous=STARTING]
+2026-03-10T20:16:19.051+03:00  INFO 20384 --- [user-service] [foReplicator-%d] com.netflix.discovery.DiscoveryClient    : DiscoveryClient_USER-SERVICE/PC:user-service:8091: registering service...
+2026-03-10T20:16:19.316+03:00  INFO 20384 --- [user-service] [foReplicator-%d] com.netflix.discovery.DiscoveryClient    : DiscoveryClient_USER-SERVICE/PC:user-service:8091 - registration status: 204
+2026-03-10T20:16:20.019+03:00  INFO 20384 --- [user-service] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8091 (http) with context path '/'
+2026-03-10T20:16:20.021+03:00  INFO 20384 --- [user-service] [           main] .s.c.n.e.s.EurekaAutoServiceRegistration : Updating port to 8091
+2026-03-10T20:16:20.979+03:00  INFO 20384 --- [user-service] [           main] c.s.users.UserServiceApplication         : Started UserServiceApplication in 47.44 seconds (process running for 51.186)
+2026-03-10T20:16:49.005+03:00  INFO 20384 --- [user-service] [nio-8091-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-03-10T20:16:49.006+03:00  INFO 20384 --- [user-service] [nio-8091-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-03-10T20:16:49.008+03:00  INFO 20384 --- [user-service] [nio-8091-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-03-10T20:16:49.024+03:00  INFO 20384 --- [user-service] [reshExecutor-%d] com.netflix.discovery.DiscoveryClient    : Disable delta property : false
+2026-03-10T20:16:49.024+03:00  INFO 20384 --- [user-service] [reshExecutor-%d] com.netflix.discovery.DiscoveryClient    : Single vip registry refresh property : null
+2026-03-10T20:16:49.025+03:00  INFO 20384 --- [user-service] [reshExecutor-%d] com.netflix.discovery.DiscoveryClient    : Force full registry fetch : false
+2026-03-10T20:16:49.026+03:00  INFO 20384 --- [user-service] [reshExecutor-%d] com.netflix.discovery.DiscoveryClient    : Application is null : false
+2026-03-10T20:16:49.026+03:00  INFO 20384 --- [user-service] [reshExecutor-%d] com.netflix.discovery.DiscoveryClient    : Registered Applications size is zero : true
+2026-03-10T20:16:49.026+03:00  INFO 20384 --- [user-service] [reshExecutor-%d] com.netflix.discovery.DiscoveryClient    : Application version is -1: false
+2026-03-10T20:16:49.026+03:00  INFO 20384 --- [user-service] [reshExecutor-%d] com.netflix.discovery.DiscoveryClient    : Getting all instance registry info from the eureka server
+2026-03-10T20:16:49.051+03:00  INFO 20384 --- [user-service] [reshExecutor-%d] com.netflix.discovery.DiscoveryClient    : The response status is 200
+2026-03-10T20:18:28.448+03:00  INFO 20384 --- [user-service] [nio-8091-exec-5] c.smartthings.users.service.AuthService  : Registered new user with id=33
+2026-03-10T20:18:46.738+03:00  INFO 20384 --- [user-service] [nio-8091-exec-8] c.smartthings.users.service.AuthService  : Registered new user with id=34
+2026-03-10T20:18:48.028+03:00  INFO 20384 --- [user-service] [nio-8091-exec-9] c.smartthings.users.service.AuthService  : User admin@smartthings.local logged in
+2026-03-10T20:21:17.192+03:00  INFO 20384 --- [user-service] [rap-executor-%d] c.n.d.s.r.aws.ConfigClusterResolver      : Resolving eureka endpoints via configuration

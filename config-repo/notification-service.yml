@@ -1,0 +1,19 @@
+server:
+  port: 8094
+
+spring:
+  datasource:
+    url: ${NOTIFICATION_DB_URL:jdbc:postgresql://localhost:5436/notification_service}
+    driver-class-name: org.postgresql.Driver
+    username: ${NOTIFICATION_DB_USERNAME:smartthings}
+    password: ${NOTIFICATION_DB_PASSWORD:smartthings}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          lob:
+            non_contextual_creation: true

@@ -1,0 +1,29 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: user-auth
+          uri: lb://user-service
+          predicates:
+            - Path=/api/auth/**,/api/users/**
+        - id: products
+          uri: lb://product-service
+          predicates:
+            - Path=/api/products/**
+        - id: orders
+          uri: lb://order-service
+          predicates:
+            - Path=/api/orders/**
+        - id: notifications
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**

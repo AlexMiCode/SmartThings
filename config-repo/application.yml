@@ -1,0 +1,29 @@
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+    com.smartthings: INFO
+
+security:
+  jwt:
+    secret: U21hcnRUaGluZ3NTdG9yZVN1cGVyU2VjcmV0S2V5Rm9ySldUMTIzNDU2Nzg5MDEyMzQ1
+    expiration-seconds: 43200
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

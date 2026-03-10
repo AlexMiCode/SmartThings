@@ -1,0 +1,28 @@
+server:
+  port: 8092
+
+spring:
+  datasource:
+    url: ${PRODUCT_DB_URL:jdbc:postgresql://localhost:5434/product_service}
+    driver-class-name: org.postgresql.Driver
+    username: ${PRODUCT_DB_USERNAME:smartthings}
+    password: ${PRODUCT_DB_PASSWORD:smartthings}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2s
+  cache:
+    type: redis
+    redis:
+      time-to-live: 5m
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
