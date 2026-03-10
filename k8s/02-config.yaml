@@ -1,0 +1,238 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-repo
+  namespace: smartthings
+data:
+  application.yml: |
+    eureka:
+      client:
+        service-url:
+          defaultZone: ${EUREKA_SERVER_URL:http://discovery-server:8761/eureka/}
+      instance:
+        prefer-ip-address: true
+
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health,info,metrics,prometheus
+      endpoint:
+        health:
+          show-details: always
+
+    logging:
+      level:
+        root: INFO
+        com.smartthings: INFO
+
+    security:
+      jwt:
+        secret: ${JWT_SECRET}
+        expiration-seconds: ${JWT_EXPIRATION_SECONDS:43200}
+
+    springdoc:
+      swagger-ui:
+        path: /swagger-ui.html
+  api-gateway.yml: |
+    server:
+      port: 8080
+
+    spring:
+      application:
+        name: api-gateway
+      cloud:
+        gateway:
+          discovery:
+            locator:
+              enabled: true
+              lower-case-service-id: true
+          routes:
+            - id: user-auth
+              uri: lb://user-service
+              predicates:
+                - Path=/api/auth/**,/api/users/**
+            - id: products
+              uri: lb://product-service
+              predicates:
+                - Path=/api/products/**
+            - id: orders
+              uri: lb://order-service
+              predicates:
+                - Path=/api/orders/**
+            - id: notifications
+              uri: lb://notification-service
+              predicates:
+                - Path=/api/notifications/**
+  discovery-server.yml: |
+    server:
+      port: 8761
+
+    spring:
+      application:
+        name: discovery-server
+
+    eureka:
+      client:
+        register-with-eureka: false
+        fetch-registry: false
+  user-service.yml: |
+    server:
+      port: 8091
+
+    spring:
+      datasource:
+        url: ${USER_DB_URL}
+        driver-class-name: org.postgresql.Driver
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+      jpa:
+        hibernate:
+          ddl-auto: update
+        open-in-view: false
+        properties:
+          hibernate:
+            format_sql: true
+            jdbc:
+              lob:
+                non_contextual_creation: true
+  product-service.yml: |
+    server:
+      port: 8092
+
+    spring:
+      datasource:
+        url: ${PRODUCT_DB_URL}
+        driver-class-name: org.postgresql.Driver
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+      data:
+        redis:
+          host: ${REDIS_HOST}
+          port: ${REDIS_PORT}
+          timeout: 2s
+      cache:
+        type: redis
+        redis:
+          time-to-live: 5m
+      jpa:
+        hibernate:
+          ddl-auto: update
+        open-in-view: false
+        properties:
+          hibernate:
+            format_sql: true
+            jdbc:
+              lob:
+                non_contextual_creation: true
+  order-service.yml: |
+    server:
+      port: 8093
+
+    spring:
+      datasource:
+        url: ${ORDER_DB_URL}
+        driver-class-name: org.postgresql.Driver
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+      jpa:
+        hibernate:
+          ddl-auto: update
+        open-in-view: false
+        properties:
+          hibernate:
+            format_sql: true
+            jdbc:
+              lob:
+                non_contextual_creation: true
+
+    resilience4j:
+      circuitbreaker:
+        instances:
+          product-service:
+            sliding-window-size: 5
+            minimum-number-of-calls: 3
+            failure-rate-threshold: 50
+            wait-duration-in-open-state: 10s
+      timelimiter:
+        instances:
+          product-service:
+            timeout-duration: 2s
+  notification-service.yml: |
+    server:
+      port: 8094
+
+    spring:
+      datasource:
+        url: ${NOTIFICATION_DB_URL}
+        driver-class-name: org.postgresql.Driver
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+      jpa:
+        hibernate:
+          ddl-auto: update
+        open-in-view: false
+        properties:
+          hibernate:
+            format_sql: true
+            jdbc:
+              lob:
+                non_contextual_creation: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: smartthings
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    scrape_configs:
+      - job_name: config-server
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: ["config-server:8888"]
+
+      - job_name: discovery-server
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: ["discovery-server:8761"]
+
+      - job_name: api-gateway
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: ["api-gateway:8080"]
+
+      - job_name: user-service
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: ["user-service:8091"]
+
+      - job_name: product-service
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: ["product-service:8092"]
+
+      - job_name: order-service
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: ["order-service:8093"]
+
+      - job_name: notification-service
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: ["notification-service:8094"]
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: platform-secrets
+  namespace: smartthings
+type: Opaque
+stringData:
+  DB_USERNAME: smartthings
+  DB_PASSWORD: smartthings
+  JWT_SECRET: U21hcnRUaGluZ3NTdG9yZVN1cGVyU2VjcmV0S2V5Rm9ySldUMTIzNDU2Nzg5MDEyMzQ1

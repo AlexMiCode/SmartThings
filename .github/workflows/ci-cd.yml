@@ -1,0 +1,106 @@
+name: ci-cd
+
+"on":
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+env:
+  REGISTRY: docker.io
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 23
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 23
+          cache: gradle
+      - name: Run backend tests
+        run: ./gradlew test
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Build frontend
+        env:
+          VITE_API_URL: http://localhost:8080
+        run: npm run build
+
+  docker-images:
+    needs:
+      - backend-test
+      - frontend-build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: config-server
+            context: .
+            dockerfile: ./config-server/Dockerfile
+            image: smartthings-config-server
+          - name: discovery-server
+            context: .
+            dockerfile: ./discovery-server/Dockerfile
+            image: smartthings-discovery-server
+          - name: api-gateway
+            context: .
+            dockerfile: ./api-gateway/Dockerfile
+            image: smartthings-api-gateway
+          - name: user-service
+            context: .
+            dockerfile: ./user-service/Dockerfile
+            image: smartthings-user-service
+          - name: product-service
+            context: .
+            dockerfile: ./product-service/Dockerfile
+            image: smartthings-product-service
+          - name: order-service
+            context: .
+            dockerfile: ./order-service/Dockerfile
+            image: smartthings-order-service
+          - name: notification-service
+            context: .
+            dockerfile: ./notification-service/Dockerfile
+            image: smartthings-notification-service
+          - name: frontend
+            context: ./frontend
+            dockerfile: ./frontend/Dockerfile
+            image: smartthings-frontend
+            build_args: VITE_API_URL=http://smartthings.local/api
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to Docker Hub
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and optionally push ${{ matrix.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          build-args: ${{ matrix.build_args || '' }}
+          push: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+          tags: ${{ env.REGISTRY }}/${{ secrets.DOCKERHUB_USERNAME || 'local' }}/${{ matrix.image }}:${{ github.sha }}

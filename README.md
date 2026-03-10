@@ -1,21 +1,22 @@
 # SmartThings Store
 
-Микросервисная платформа интернет-магазина товаров для умного дома на Spring Boot / Spring Cloud с PostgreSQL, Redis, Docker и тестовым набором под требования ТЗ.
+Микросервисный интернет-магазин товаров для умного дома на Spring Boot / Spring Cloud. Проект закрывает требования ТЗ по backend-архитектуре, PostgreSQL, Redis, Docker, Kubernetes, Prometheus, CI/CD и тестированию.
 
-## Архитектура
+## Состав системы
 
-Платформа состоит из сервисов:
-
-- `config-server` — централизованная конфигурация сервисов из `config-repo`
-- `discovery-server` — Service Registry на Eureka
-- `api-gateway` — единая точка входа, JWT-проверка, role-check для admin-операций
+- `config-server` — централизованная конфигурация из `config-repo`
+- `discovery-server` — service registry на Eureka
+- `api-gateway` — единая точка входа, JWT-проверка, role-check для admin-эндпоинтов
 - `user-service` — регистрация, логин, CRUD пользователей
-- `product-service` — каталог товаров, фильтры, складской остаток, Redis-кэш каталога
-- `order-service` — оформление заказов, история заказов, статусы, межсервисные вызовы и circuit breaker
-- `notification-service` — журнал уведомлений о созданных заказах
-- `frontend` — готовый шаблон витрины и базовой админской панели
+- `product-service` — каталог товаров, фильтрация, управление остатками, Redis-кэш
+- `order-service` — оформление заказов, статусы, вызовы других сервисов, circuit breaker
+- `notification-service` — журнал уведомлений о заказах
+- `frontend` — React SPA с публичной витриной, кабинетом и админкой
+- `monitoring/prometheus.yml` — конфигурация Prometheus для Docker Compose
+- `k8s` — Kubernetes-манифесты платформы
+- `.github/workflows/ci-cd.yml` — GitHub Actions pipeline
 
-## Стек
+## Технологии
 
 ### Backend
 
@@ -31,59 +32,72 @@
 - Redis
 - OpenFeign
 - Resilience4j
-- Springdoc OpenAPI / Swagger
 - Spring Boot Actuator
+- Micrometer Prometheus Registry
+- Springdoc OpenAPI / Swagger
 
 ### Frontend
 
 - React 19
 - Vite 7
+- React Router
 - CSS без UI-библиотек
 
-### Контейнеризация
+### Infrastructure
 
 - Docker
 - Docker Compose
-- Multi-stage Dockerfiles для каждого сервиса
+- Kubernetes
+- Prometheus
+- GitHub Actions
 
-## Почему сделано так
+## Почему архитектура сделана так
 
-- `Config Server` и `Eureka` оставлены как обязательная часть микросервисной схемы из ТЗ, чтобы инфраструктура не была временной или условной.
-- `API Gateway` забирает на себя единую авторизацию и базовые правила доступа, чтобы доменные сервисы не дублировали один и тот же входной контроль.
-- `Database per service` сохранён: у каждого backend-сервиса своя PostgreSQL база.
-- `Redis` используется в `product-service` как реальный внешний кэш для списка товаров, а не как локальная заглушка.
-- `Frontend` оставлен простым и расширяемым: это рабочий шаблон, который легко переписать под ваш будущий дизайн.
+- `Config Server` и `Eureka` сохранены как полноценная часть микросервисной схемы, а не как временная заглушка.
+- `API Gateway` централизует входной контроль и не размазывает JWT-логику по доменным сервисам.
+- `Database per service` соблюдён: у каждого backend-сервиса своя PostgreSQL база.
+- `Redis` используется как реальный внешний кэш каталога.
+- `Prometheus` подключён через Actuator и Micrometer, чтобы метрики были доступны одинаково в Docker и Kubernetes.
+- `Kubernetes` описан обычными манифестами без Helm, чтобы структура была прозрачной и легко защищаемой на показе проекта.
+- `Frontend` специально оставлен как рабочий, но простой шаблон, который можно дальше свободно переделывать.
 
 ## Структура проекта
 
 - `common` — общие DTO, enum, исключения, JWT utility
-- `config-server` — сервер конфигурации
-- `discovery-server` — Eureka Registry
-- `api-gateway` — gateway и JWT filter
-- `user-service` — пользователи и авторизация
-- `product-service` — каталог товаров и Redis cache
-- `order-service` — заказы и отказоустойчивость
-- `notification-service` — лог уведомлений
-- `frontend` — React frontend
-- `config-repo` — внешние YAML-конфиги сервисов
-- `scripts/docker-smoke-test.ps1` — smoke-check контейнерного стенда
-- `docker-compose.yml` — полный стек платформы
+- `config-server`
+- `discovery-server`
+- `api-gateway`
+- `user-service`
+- `product-service`
+- `order-service`
+- `notification-service`
+- `frontend`
+- `config-repo`
+- `monitoring`
+- `k8s`
+- `scripts`
 
 ## Порты
 
-- `5173` — frontend в Docker
-- `8080` — api-gateway
+### Application
+
+- `5173` — frontend в Docker Compose
+- `8080` — API Gateway
 - `8091` — user-service
 - `8092` — product-service
 - `8093` — order-service
 - `8094` — notification-service
 - `8761` — discovery-server
 - `8888` — config-server
+
+### Infrastructure
+
 - `5433` — user PostgreSQL
 - `5434` — product PostgreSQL
 - `5435` — order PostgreSQL
 - `5436` — notification PostgreSQL
 - `6379` — Redis
+- `9090` — Prometheus
 
 ## Демо-учётка
 
@@ -120,25 +134,26 @@ docker compose up -d --build
 docker compose down
 ```
 
-Остановка с удалением volume баз:
+Остановка с удалением volume:
 
 ```powershell
 docker compose down -v
 ```
 
-Smoke-check после старта:
+Smoke-check контейнерного стенда:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\docker-smoke-test.ps1
 ```
 
-## Что откроется после запуска Docker
+После запуска доступны:
 
 - Frontend: [http://localhost:5173](http://localhost:5173)
 - API Gateway: [http://localhost:8080](http://localhost:8080)
 - Eureka: [http://localhost:8761](http://localhost:8761)
+- Prometheus: [http://localhost:9090](http://localhost:9090)
 
-Swagger каждого backend-сервиса:
+Swagger:
 
 - [http://localhost:8091/swagger-ui.html](http://localhost:8091/swagger-ui.html)
 - [http://localhost:8092/swagger-ui.html](http://localhost:8092/swagger-ui.html)
@@ -147,13 +162,13 @@ Swagger каждого backend-сервиса:
 
 ## Ручной запуск без полного Compose
 
-Если хотите поднимать backend вручную, сначала нужен PostgreSQL и Redis. Проще всего поднять только инфраструктуру:
+Сначала поднимите только инфраструктуру:
 
 ```powershell
-docker compose up -d redis user-db product-db order-db notification-db
+docker compose up -d redis prometheus user-db product-db order-db notification-db
 ```
 
-Потом из корня проекта в отдельных консолях:
+Затем в отдельных консолях:
 
 ```powershell
 .\gradlew.bat :config-server:bootRun
@@ -191,32 +206,124 @@ npm install
 npm run dev
 ```
 
+## Мониторинг
+
+Во всех backend-сервисах подключены:
+
+- `actuator/health`
+- `actuator/metrics`
+- `actuator/prometheus`
+
+Prometheus собирает метрики со всех backend-компонентов через конфиг в [monitoring/prometheus.yml](C:\Users\lehax\OneDrive\Documents\SmartThings\monitoring\prometheus.yml).
+
+## Kubernetes
+
+Манифесты лежат в каталоге [k8s](C:\Users\lehax\OneDrive\Documents\SmartThings\k8s).
+
+Что входит:
+
+- `Namespace`
+- `ConfigMap` с конфигами Config Server
+- `Secret` с JWT и DB-учётными данными
+- `Deployment` и `Service` для всех сервисов, PostgreSQL, Redis и Prometheus
+- `Ingress` для frontend и gateway
+- `HPA` для `product-service`
+- readiness/liveness probes
+- rolling update стратегия для `product-service`
+
+### Перед деплоем в Kubernetes
+
+1. Соберите и опубликуйте Docker-образы.
+2. При необходимости замените имена образов `smartthings/...:latest` в манифестах на свои registry tags.
+3. Убедитесь, что в кластере установлен ingress controller.
+4. Для HPA нужен Metrics Server.
+
+### Деплой
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy-k8s.ps1
+```
+
+Либо вручную:
+
+```powershell
+kubectl apply -f .\k8s
+```
+
+### Проверка Kubernetes по ТЗ
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\k8s-smoke-test.ps1
+```
+
+Этот сценарий проверяет:
+
+- успешный rollout deployment-ов
+- перезапуск pod `product-service`
+- масштабирование `product-service`
+- наличие `HPA`
+- rolling restart `product-service`
+
+Для локального доступа через ingress удобно добавить запись в hosts:
+
+```text
+127.0.0.1 smartthings.local
+```
+
+После этого frontend и API доступны через `http://smartthings.local`.
+
+## CI/CD
+
+Pipeline лежит в [ci-cd.yml](C:\Users\lehax\OneDrive\Documents\SmartThings\.github\workflows\ci-cd.yml).
+
+Что делает pipeline:
+
+1. Запускает backend-тесты `./gradlew test`
+2. Собирает frontend `npm ci && npm run build`
+3. Собирает Docker-образы всех сервисов
+4. Пушит образы в Docker Hub только если тесты прошли и это push в `main` или `master`
+
+Что нужно настроить в GitHub Secrets:
+
+- `DOCKERHUB_USERNAME`
+- `DOCKERHUB_TOKEN`
+
+Почему pipeline соответствует ТЗ:
+
+- тесты запускаются всегда
+- при падении тестов job сборки образов не стартует
+- публикация образов не происходит при неуспешных тестах
+
 ## Конфигурация
 
-Все внешние конфиги находятся в `config-repo`.
+Базовые конфиги сервисов лежат в [config-repo](C:\Users\lehax\OneDrive\Documents\SmartThings\config-repo).
 
-Ключевые параметры:
+Ключевые переменные окружения:
 
-- `USER_DB_URL`, `PRODUCT_DB_URL`, `ORDER_DB_URL`, `NOTIFICATION_DB_URL`
-- `*_DB_USERNAME`, `*_DB_PASSWORD`
-- `REDIS_HOST`, `REDIS_PORT`
 - `CONFIG_SERVER_URL`
 - `EUREKA_SERVER_URL`
-
-По умолчанию локальные значения уже настроены на порты из `docker-compose.yml`.
+- `JWT_SECRET`
+- `JWT_EXPIRATION_SECONDS`
+- `USER_DB_URL`
+- `PRODUCT_DB_URL`
+- `ORDER_DB_URL`
+- `NOTIFICATION_DB_URL`
+- `DB_USERNAME`
+- `DB_PASSWORD`
+- `REDIS_HOST`
+- `REDIS_PORT`
 
 ## Что можно проверить вручную
 
 Через frontend:
 
 - просмотр каталога
-- регистрация пользователя
-- вход пользователя
+- регистрация и вход
 - корзина
 - оформление заказа
-- просмотр заказов
-- вход под admin
-- добавление нового товара
+- просмотр своих заказов
+- админский вход
+- создание и редактирование товара
 - просмотр уведомлений
 
 Через gateway API:
@@ -231,83 +338,50 @@ npm run dev
 
 ## Тесты
 
-Запуск:
+Запуск всего набора:
 
 ```powershell
 .\gradlew.bat test
 ```
 
-### Какие тесты подготовлены
+### Unit tests
 
-#### Unit tests
+Проверяют сервисный слой и бизнес-логику в изоляции.
 
-Проверяют бизнес-логику service-слоя без поднятия всего приложения.
+Для чего нужны:
 
-Что покрывают:
+- быстро ловят ошибки доменных правил
+- позволяют безопасно менять service-логику
+- покрывают минимум по ТЗ для unit-проверок
 
-- регистрация и логин пользователя
-- создание, обновление и удаление пользователя
-- фильтрация каталога и резервирование товара
-- расчёт заказа и изменение статуса
-- fallback/ошибки при недоступности `product-service`
-- запись и сортировку уведомлений
-
-Зачем нужны:
-
-- быстро ловят ошибки в бизнес-логике
-- изолируют сервисный слой
-- позволяют безопасно менять правила домена
-
-#### Integration tests
+### Integration tests
 
 Проверяют цепочку `Controller -> Service -> Repository -> DB`.
 
-Что покрывают:
+Для чего нужны:
 
-- создание и чтение пользователей
-- создание и чтение товаров
-- создание заказа и последующее обновление статуса
-- запись и получение уведомлений
+- подтверждают корректность JPA, web-слоя и сериализации
+- ловят ошибки конфигурации контроллеров и БД
 
-Зачем нужны:
+### API tests
 
-- подтверждают, что web-слой и persistence-слой собраны корректно
-- выявляют ошибки сериализации, маппинга и JPA-конфигурации
+Проверяют HTTP-статусы, JSON и обработку ошибок.
 
-#### API tests
+Для чего нужны:
 
-Проверяют HTTP статус-коды и JSON-ответы контроллеров.
+- фиксируют контракт между backend и frontend
+- не дают незаметно сломать API
 
-Что покрывают:
+### Fault tolerance tests
 
-- `/api/auth/register`
-- `/api/auth/login`
-- `/api/products`
-- `/api/orders`
-- `/api/notifications`
+Проверяют circuit breaker и fallback в `order-service`.
 
-Зачем нужны:
+Для чего нужны:
 
-- фиксируют контракт API
-- помогают не ломать frontend и интеграции при изменениях backend
+- подтверждают корректную деградацию при отказе зависимого сервиса
+- закрывают требования ТЗ по отказоустойчивости
 
-#### Fault tolerance tests
-
-Проверяют fallback-логику `order-service` при сбоях каталога.
-
-Что покрывают:
-
-- fallback при чтении товара
-- fallback при резервировании товара
-
-Зачем нужны:
-
-- подтверждают, что система деградирует контролируемо
-- помогают проверить реализацию circuit breaker и user-friendly ошибок
-
-#### Container smoke test
-
-Проверяет, что после `docker compose up` поднимаются все сервисы и через gateway доступен каталог.
+### Container smoke test
 
 Запуск:
 
@@ -315,29 +389,40 @@ npm run dev
 powershell -ExecutionPolicy Bypass -File .\scripts\docker-smoke-test.ps1
 ```
 
-Зачем нужен:
+Для чего нужен:
 
-- даёт быструю проверку контейнерного стенда после изменений инфраструктуры
-- нужен как базовая smoke-проверка перед дальнейшей подготовкой к CI/CD
+- подтверждает, что стенд после `docker compose up` действительно поднимается
+- проверяет базовую доступность API через gateway
 
-## Что уже проверено
+### Kubernetes smoke test
 
-Фактически прогнано и успешно прошло:
+Запуск:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\k8s-smoke-test.ps1
+```
+
+Для чего нужен:
+
+- проверяет pod restart
+- проверяет масштабирование
+- проверяет rollout поведения deployment-а
+
+## Что проверено локально
+
+Успешно прогнано:
 
 - `.\gradlew.bat test`
-- `.\gradlew.bat build`
 - `npm run build`
 - `docker compose config`
-- `docker compose up -d --build`
-- `scripts/docker-smoke-test.ps1`
 
-## Что дальше
+Дополнительно:
 
-Следующий разумный этап после этой версии:
+- `kubectl` найден в системе
 
-1. добавить GitHub Actions
-2. подготовить Kubernetes manifests
-3. усилить безопасность gateway и сервисов
-4. вынести секреты и env-файлы
-5. расширить доменную модель магазина
+Что не было прогнано в этом проходе:
 
+- реальный деплой в активный Kubernetes-кластер
+- реальный запуск GitHub Actions в удалённом репозитории
+
+Эти два сценария зависят уже от конкретного кластера и GitHub-репозитория с настроенными secrets.

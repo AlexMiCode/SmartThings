@@ -21,8 +21,8 @@ logging:
 
 security:
   jwt:
-    secret: U21hcnRUaGluZ3NTdG9yZVN1cGVyU2VjcmV0S2V5Rm9ySldUMTIzNDU2Nzg5MDEyMzQ1
-    expiration-seconds: 43200
+    secret: ${JWT_SECRET:U21hcnRUaGluZ3NTdG9yZVN1cGVyU2VjcmV0S2V5Rm9ySldUMTIzNDU2Nzg5MDEyMzQ1}
+    expiration-seconds: ${JWT_EXPIRATION_SECONDS:43200}
 
 springdoc:
   swagger-ui:
