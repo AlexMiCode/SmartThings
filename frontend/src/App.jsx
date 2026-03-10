@@ -1,432 +1,348 @@
 import { useEffect, useMemo, useState } from 'react'
+import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { buildProductQuery, request } from './lib/api'
+import { emptyCatalogFilters, readStorage } from './lib/format'
+import { AppHeader, StatePage } from './components/Shared'
+import {
+  AccountPage,
+  AuthPage,
+  CartPage,
+  CatalogPage,
+  CheckoutPage,
+  HomePage,
+  OrderDetailsPage,
+  OrderSuccessPage,
+  ProductPage
+} from './pages/PublicPages'
+import {
+  AdminNotificationsPage,
+  AdminOrdersPage,
+  AdminOverviewPage,
+  AdminProductsPage
+} from './pages/AdminPages'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 const ADMIN_EMAIL = 'admin@smartthings.local'
 const ADMIN_PASSWORD = 'admin123'
 
-function currency(value) {
-  return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(value)
+function ProtectedRoute({ auth, children }) {
+  return auth ? children : <Navigate to="/login" replace />
 }
 
-async function request(path, options = {}, token) {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {})
-    }
-  })
-
-  if (response.status === 204) {
-    return null
-  }
-
-  const text = await response.text()
-  const payload = text ? JSON.parse(text) : null
-
-  if (!response.ok) {
-    throw new Error(payload?.detail || payload?.message || 'Request failed')
-  }
-
-  return payload
+function GuestRoute({ auth, children }) {
+  return auth ? <Navigate to="/account" replace /> : children
 }
 
-const emptyProduct = {
-  name: '',
-  description: '',
-  category: 'Lighting',
-  brand: '',
-  price: '',
-  stockQuantity: '',
-  imageUrl: '',
-  featured: true
+function AdminRoute({ auth, children }) {
+  if (!auth) return <Navigate to="/login" replace />
+  if (auth.user.role !== 'ADMIN') return <Navigate to="/403" replace />
+  return children
 }
 
-export default function App() {
+function AppShell() {
+  const navigate = useNavigate()
+  const [auth, setAuth] = useState(() => readStorage('smartthings-auth', null))
+  const [cart, setCart] = useState(() => readStorage('smartthings-cart', []))
   const [products, setProducts] = useState([])
-  const [cart, setCart] = useState([])
-  const [auth, setAuth] = useState(() => {
-    const raw = localStorage.getItem('smartthings-auth')
-    return raw ? JSON.parse(raw) : null
-  })
-  const [orders, setOrders] = useState([])
+  const [catalogFilters, setCatalogFilters] = useState(emptyCatalogFilters)
+  const [accountOrders, setAccountOrders] = useState([])
   const [notifications, setNotifications] = useState([])
-  const [form, setForm] = useState({ email: '', password: '', fullName: '' })
-  const [checkout, setCheckout] = useState({
-    customerName: '',
-    customerEmail: '',
-    deliveryAddress: '',
-    notes: ''
-  })
-  const [productForm, setProductForm] = useState(emptyProduct)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
-  const isAdmin = auth?.user?.role === 'ADMIN'
+  const [adminOrders, setAdminOrders] = useState([])
+  const [selectedAdminUserId, setSelectedAdminUserId] = useState('')
+  const [flash, setFlash] = useState(null)
+  const [pageError, setPageError] = useState('')
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false)
 
-  const cartTotal = useMemo(
-    () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
-    [cart]
-  )
+  const isAdmin = auth?.user?.role === 'ADMIN'
+  const categories = useMemo(() => [...new Set(products.map(product => product.category))], [products])
+  const featuredProducts = useMemo(() => products.filter(product => product.featured).slice(0, 4), [products])
+  const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart])
+  const cartTotal = useMemo(() => cart.reduce((sum, item) => sum + item.quantity * item.price, 0), [cart])
 
   useEffect(() => {
-    loadProducts()
+    localStorage.setItem('smartthings-cart', JSON.stringify(cart))
+  }, [cart])
+
+  useEffect(() => {
+    if (auth) localStorage.setItem('smartthings-auth', JSON.stringify(auth))
+    else localStorage.removeItem('smartthings-auth')
+  }, [auth])
+
+  useEffect(() => {
+    loadProducts(catalogFilters)
   }, [])
 
   useEffect(() => {
-    if (auth) {
-      localStorage.setItem('smartthings-auth', JSON.stringify(auth))
-      loadOrders(auth.token)
-      if (isAdmin) {
-        loadNotifications(auth.token)
-      }
+    if (auth?.token) {
+      loadAccountOrders(auth.token)
+      if (isAdmin) loadNotifications(auth.token)
     } else {
-      localStorage.removeItem('smartthings-auth')
-      setOrders([])
+      setAccountOrders([])
       setNotifications([])
+      setAdminOrders([])
     }
-  }, [auth, isAdmin])
+  }, [auth?.token, isAdmin])
 
-  async function loadProducts() {
+  function setBanner(type, text) {
+    setFlash({ type, text })
+  }
+
+  async function loadProducts(nextFilters = catalogFilters) {
+    setIsLoadingProducts(true)
+    setPageError('')
     try {
-      const data = await request('/api/products')
-      setProducts(data)
-    } catch (err) {
-      setError(err.message)
+      setProducts(await request(buildProductQuery(nextFilters)))
+    } catch (error) {
+      setPageError(error.message)
+    } finally {
+      setIsLoadingProducts(false)
     }
   }
 
-  async function loadOrders(token = auth?.token) {
+  function loadProductById(productId) {
+    return request(`/api/products/${productId}`)
+  }
+
+  async function loadAccountOrders(token = auth?.token) {
     if (!token) return
     try {
-      const data = await request('/api/orders', {}, token)
-      setOrders(data)
-    } catch (err) {
-      setError(err.message)
+      setAccountOrders(await request('/api/orders', {}, token))
+    } catch (error) {
+      setPageError(error.message)
     }
   }
 
   async function loadNotifications(token = auth?.token) {
+    if (!token || !isAdmin) return
     try {
-      const data = await request('/api/notifications', {}, token)
-      setNotifications(data)
-    } catch (err) {
-      setError(err.message)
+      setNotifications(await request('/api/notifications', {}, token))
+    } catch (error) {
+      setPageError(error.message)
+    }
+  }
+
+  async function loadAdminOrders(userId) {
+    if (!auth?.token || !userId) {
+      setAdminOrders([])
+      return
+    }
+    try {
+      setAdminOrders(await request(`/api/orders?userId=${encodeURIComponent(userId)}`, {}, auth.token))
+    } catch (error) {
+      setPageError(error.message)
     }
   }
 
   function addToCart(product) {
+    if (product.stockQuantity < 1) {
+      setBanner('error', 'Товар отсутствует на складе')
+      return
+    }
+
     setCart(current => {
       const existing = current.find(item => item.id === product.id)
       if (existing) {
-        return current.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item)
+        const nextQuantity = Math.min(existing.quantity + 1, product.stockQuantity)
+        return current.map(item => item.id === product.id ? { ...item, quantity: nextQuantity } : item)
       }
       return [...current, { ...product, quantity: 1 }]
     })
-    setMessage(`Товар "${product.name}" добавлен в корзину`)
+    setBanner('success', `Товар "${product.name}" добавлен в корзину`)
   }
 
-  function updateCart(productId, quantity) {
-    if (quantity <= 0) {
+  function updateCartQuantity(productId, nextQuantity) {
+    if (nextQuantity <= 0) {
       setCart(current => current.filter(item => item.id !== productId))
       return
     }
-    setCart(current => current.map(item => item.id === productId ? { ...item, quantity } : item))
+    setCart(current => current.map(item => item.id === productId ? { ...item, quantity: nextQuantity } : item))
   }
 
-  async function handleRegister(event) {
-    event.preventDefault()
-    setError('')
-    setMessage('')
-    try {
-      const data = await request('/api/auth/register', {
-        method: 'POST',
-        body: JSON.stringify(form)
-      })
-      setAuth(data)
-      setCheckout(current => ({
-        ...current,
-        customerName: data.user.fullName,
-        customerEmail: data.user.email
-      }))
-      setMessage('Регистрация выполнена')
-    } catch (err) {
-      setError(err.message)
-    }
+  function clearCart() {
+    setCart([])
   }
 
-  async function handleLogin(event, credentials = form) {
-    if (event) event.preventDefault()
-    setError('')
-    setMessage('')
-    try {
-      const data = await request('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email: credentials.email, password: credentials.password })
+  async function login(credentials) {
+    const data = await request('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email: credentials.email.trim(), password: credentials.password })
+    })
+    setAuth(data)
+    setBanner('success', 'Вход выполнен')
+    return data
+  }
+
+  async function register(payload) {
+    const data = await request('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        fullName: payload.fullName.trim(),
+        email: payload.email.trim(),
+        password: payload.password
       })
-      setAuth(data)
-      setCheckout(current => ({
-        ...current,
-        customerName: data.user.fullName,
-        customerEmail: data.user.email
-      }))
-      setMessage('Вход выполнен')
-    } catch (err) {
-      setError(err.message)
-    }
+    })
+    setAuth(data)
+    setBanner('success', 'Регистрация выполнена')
+    return data
   }
 
   async function loginAsAdmin() {
-    await handleLogin(null, { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-  }
-
-  async function submitOrder(event) {
-    event.preventDefault()
-    setError('')
-    setMessage('')
-
-    if (!auth?.token) {
-      setError('Для оформления заказа необходимо войти')
-      return
-    }
-    if (!cart.length) {
-      setError('Корзина пуста')
-      return
-    }
-
     try {
-      await request('/api/orders', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...checkout,
-          items: cart.map(item => ({ productId: item.id, quantity: item.quantity }))
-        })
-      }, auth.token)
-      setCart([])
-      setCheckout(current => ({ ...current, notes: '', deliveryAddress: '' }))
-      setMessage('Заказ успешно создан')
-      loadOrders(auth.token)
-      if (isAdmin) loadNotifications(auth.token)
-      loadProducts()
-    } catch (err) {
-      setError(err.message)
-    }
-  }
-
-  async function createProduct(event) {
-    event.preventDefault()
-    setError('')
-    setMessage('')
-    try {
-      await request('/api/products', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...productForm,
-          price: Number(productForm.price),
-          stockQuantity: Number(productForm.stockQuantity)
-        })
-      }, auth.token)
-      setProductForm(emptyProduct)
-      setMessage('Товар создан')
-      loadProducts()
-    } catch (err) {
-      setError(err.message)
+      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+      navigate('/admin')
+    } catch (error) {
+      setBanner('error', error.message)
     }
   }
 
   function logout() {
     setAuth(null)
-    setMessage('Сессия завершена')
+    setBanner('success', 'Сессия завершена')
+    navigate('/')
+  }
+
+  async function submitOrder(values) {
+    const order = await request('/api/orders', {
+      method: 'POST',
+      body: JSON.stringify({
+        customerName: values.customerName.trim(),
+        customerEmail: values.customerEmail.trim(),
+        deliveryAddress: values.deliveryAddress.trim(),
+        notes: values.notes.trim(),
+        items: cart.map(item => ({ productId: item.id, quantity: item.quantity }))
+      })
+    }, auth.token)
+    clearCart()
+    setBanner('success', `Заказ #${order.id} успешно создан`)
+    await loadProducts(catalogFilters)
+    await loadAccountOrders(auth.token)
+    if (isAdmin) await loadNotifications(auth.token)
+    return order
+  }
+
+  async function createProduct(values) {
+    const created = await request('/api/products', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: values.name.trim(),
+        description: values.description.trim(),
+        category: values.category.trim(),
+        brand: values.brand.trim(),
+        price: Number(values.price),
+        stockQuantity: Number(values.stockQuantity),
+        imageUrl: values.imageUrl.trim() || null,
+        featured: values.featured
+      })
+    }, auth.token)
+    setBanner('success', `Товар "${created.name}" создан`)
+    await loadProducts(catalogFilters)
+    return created
+  }
+
+  async function updateProduct(productId, values) {
+    const updated = await request(`/api/products/${productId}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        name: values.name.trim(),
+        description: values.description.trim(),
+        category: values.category.trim(),
+        brand: values.brand.trim(),
+        price: Number(values.price),
+        stockQuantity: Number(values.stockQuantity),
+        imageUrl: values.imageUrl.trim() || null,
+        featured: values.featured
+      })
+    }, auth.token)
+    setBanner('success', `Товар "${updated.name}" обновлён`)
+    await loadProducts(catalogFilters)
+    return updated
+  }
+
+  async function deleteProduct(productId) {
+    await request(`/api/products/${productId}`, { method: 'DELETE' }, auth.token)
+    setBanner('success', 'Товар удалён')
+    await loadProducts(catalogFilters)
+  }
+
+  async function updateOrderStatus(orderId, status) {
+    await request(`/api/orders/${orderId}/status?status=${encodeURIComponent(status)}`, { method: 'PATCH' }, auth.token)
+    setBanner('success', `Статус заказа #${orderId} обновлён`)
+    if (selectedAdminUserId) await loadAdminOrders(selectedAdminUserId)
+    await loadAccountOrders(auth.token)
+  }
+
+  const shared = {
+    auth,
+    cart,
+    products,
+    categories,
+    featuredProducts,
+    accountOrders,
+    notifications,
+    adminOrders,
+    selectedAdminUserId,
+    catalogFilters,
+    cartTotal,
+    isAdmin,
+    isLoadingProducts,
+    setCatalogFilters,
+    setSelectedAdminUserId,
+    addToCart,
+    updateCartQuantity,
+    clearCart,
+    login,
+    register,
+    logout,
+    submitOrder,
+    createProduct,
+    updateProduct,
+    deleteProduct,
+    updateOrderStatus,
+    loadProducts,
+    loadProductById,
+    loadAdminOrders
   }
 
   return (
-    <div className="page">
-      <header className="hero">
-        <div>
-          <p className="eyebrow">Smart Home Commerce</p>
-          <h1>SmartThings Store</h1>
-          <p className="hero-copy">
-            Шаблон витрины интернет-магазина для товаров умного дома. Можно сразу запускать,
-            проверять сервисы вручную и позже спокойно переписывать UI под свои задачи.
-          </p>
-          <div className="hero-actions">
-            <button onClick={loadProducts}>Обновить каталог</button>
-            <button className="secondary" onClick={loginAsAdmin}>Войти как admin</button>
-          </div>
-        </div>
-        <div className="status-card">
-          <span>{auth ? `Пользователь: ${auth.user.fullName}` : 'Гость'}</span>
-          <span>{auth ? `Роль: ${auth.user.role}` : 'Каталог доступен без входа'}</span>
-          <span>{cart.length} позиций в корзине</span>
-        </div>
-      </header>
-
-      {(message || error) && (
-        <section className={`banner ${error ? 'error' : 'success'}`}>
-          {error || message}
+    <div className="app-shell">
+      <AppHeader auth={auth} cartCount={cartCount} isAdmin={isAdmin} onAdminLogin={loginAsAdmin} />
+      {flash && (
+        <section className={`banner ${flash.type}`}>
+          <span>{flash.text}</span>
+          <button className="ghost-button" onClick={() => setFlash(null)}>Закрыть</button>
         </section>
       )}
-
-      <main className="layout">
-        <section className="panel catalog">
-          <div className="section-head">
-            <div>
-              <p className="eyebrow">Каталог</p>
-              <h2>Товары</h2>
-            </div>
-            <strong>{products.length} SKU</strong>
-          </div>
-          <div className="product-grid">
-            {products.map(product => (
-              <article key={product.id} className="product-card">
-                <div className="product-image" style={{ backgroundImage: `url(${product.imageUrl})` }} />
-                <div className="product-body">
-                  <span className="tag">{product.category}</span>
-                  <h3>{product.name}</h3>
-                  <p>{product.description}</p>
-                  <div className="meta">
-                    <span>{product.brand}</span>
-                    <span>Остаток: {product.stockQuantity}</span>
-                  </div>
-                  <div className="card-footer">
-                    <strong>{currency(product.price)}</strong>
-                    <button onClick={() => addToCart(product)} disabled={product.stockQuantity < 1}>
-                      В корзину
-                    </button>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
+      {pageError && (
+        <section className="banner error">
+          <span>{pageError}</span>
+          <button className="ghost-button" onClick={() => setPageError('')}>Закрыть</button>
         </section>
-
-        <aside className="sidebar">
-          <section className="panel">
-            <div className="section-head">
-              <div>
-                <p className="eyebrow">Авторизация</p>
-                <h2>Аккаунт</h2>
-              </div>
-            </div>
-            {!auth ? (
-              <form className="stack" onSubmit={handleLogin}>
-                <input placeholder="Имя" value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} />
-                <input placeholder="Email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
-                <input placeholder="Пароль" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
-                <div className="inline-actions">
-                  <button type="submit">Войти</button>
-                  <button type="button" className="secondary" onClick={handleRegister}>Регистрация</button>
-                </div>
-              </form>
-            ) : (
-              <div className="stack">
-                <div className="profile-card">
-                  <strong>{auth.user.fullName}</strong>
-                  <span>{auth.user.email}</span>
-                  <span>{auth.user.role}</span>
-                </div>
-                <button className="secondary" onClick={logout}>Выйти</button>
-              </div>
-            )}
-          </section>
-
-          <section className="panel">
-            <div className="section-head">
-              <div>
-                <p className="eyebrow">Корзина</p>
-                <h2>Оформление</h2>
-              </div>
-              <strong>{currency(cartTotal)}</strong>
-            </div>
-            <div className="stack cart-list">
-              {cart.length === 0 && <p className="muted">Пока пусто</p>}
-              {cart.map(item => (
-                <div key={item.id} className="cart-item">
-                  <div>
-                    <strong>{item.name}</strong>
-                    <span>{currency(item.price)}</span>
-                  </div>
-                  <div className="qty">
-                    <button onClick={() => updateCart(item.id, item.quantity - 1)}>-</button>
-                    <span>{item.quantity}</span>
-                    <button onClick={() => updateCart(item.id, item.quantity + 1)}>+</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <form className="stack" onSubmit={submitOrder}>
-              <input placeholder="Имя получателя" value={checkout.customerName} onChange={e => setCheckout({ ...checkout, customerName: e.target.value })} />
-              <input placeholder="Email" type="email" value={checkout.customerEmail} onChange={e => setCheckout({ ...checkout, customerEmail: e.target.value })} />
-              <textarea placeholder="Адрес доставки" value={checkout.deliveryAddress} onChange={e => setCheckout({ ...checkout, deliveryAddress: e.target.value })} />
-              <textarea placeholder="Комментарий" value={checkout.notes} onChange={e => setCheckout({ ...checkout, notes: e.target.value })} />
-              <button type="submit">Оформить заказ</button>
-            </form>
-          </section>
-
-          <section className="panel">
-            <div className="section-head">
-              <div>
-                <p className="eyebrow">История</p>
-                <h2>Заказы</h2>
-              </div>
-            </div>
-            <div className="stack order-list">
-              {!orders.length && <p className="muted">После входа здесь появятся ваши заказы</p>}
-              {orders.map(order => (
-                <article key={order.id} className="order-card">
-                  <div className="inline-between">
-                    <strong>Заказ #{order.id}</strong>
-                    <span className="tag">{order.status}</span>
-                  </div>
-                  <span>{order.deliveryAddress}</span>
-                  <span>{currency(order.totalAmount)}</span>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          {isAdmin && (
-            <>
-              <section className="panel">
-                <div className="section-head">
-                  <div>
-                    <p className="eyebrow">Админка</p>
-                    <h2>Новый товар</h2>
-                  </div>
-                </div>
-                <form className="stack" onSubmit={createProduct}>
-                  <input placeholder="Название" value={productForm.name} onChange={e => setProductForm({ ...productForm, name: e.target.value })} />
-                  <textarea placeholder="Описание" value={productForm.description} onChange={e => setProductForm({ ...productForm, description: e.target.value })} />
-                  <input placeholder="Категория" value={productForm.category} onChange={e => setProductForm({ ...productForm, category: e.target.value })} />
-                  <input placeholder="Бренд" value={productForm.brand} onChange={e => setProductForm({ ...productForm, brand: e.target.value })} />
-                  <input placeholder="Цена" type="number" value={productForm.price} onChange={e => setProductForm({ ...productForm, price: e.target.value })} />
-                  <input placeholder="Остаток" type="number" value={productForm.stockQuantity} onChange={e => setProductForm({ ...productForm, stockQuantity: e.target.value })} />
-                  <input placeholder="URL изображения" value={productForm.imageUrl} onChange={e => setProductForm({ ...productForm, imageUrl: e.target.value })} />
-                  <button type="submit">Создать товар</button>
-                </form>
-              </section>
-
-              <section className="panel">
-                <div className="section-head">
-                  <div>
-                    <p className="eyebrow">Уведомления</p>
-                    <h2>Лог</h2>
-                  </div>
-                </div>
-                <div className="stack order-list">
-                  {!notifications.length && <p className="muted">Пока уведомлений нет</p>}
-                  {notifications.map(item => (
-                    <article key={item.id} className="order-card">
-                      <strong>#{item.orderId}</strong>
-                      <span>{item.message}</span>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            </>
-          )}
-        </aside>
-      </main>
+      )}
+      <Routes>
+        <Route path="/" element={<HomePage {...shared} />} />
+        <Route path="/catalog" element={<CatalogPage {...shared} />} />
+        <Route path="/products/:productId" element={<ProductPage {...shared} />} />
+        <Route path="/cart" element={<CartPage {...shared} />} />
+        <Route path="/checkout" element={<ProtectedRoute auth={auth}><CheckoutPage {...shared} /></ProtectedRoute>} />
+        <Route path="/checkout/success/:orderId" element={<ProtectedRoute auth={auth}><OrderSuccessPage /></ProtectedRoute>} />
+        <Route path="/login" element={<GuestRoute auth={auth}><AuthPage mode="login" {...shared} /></GuestRoute>} />
+        <Route path="/register" element={<GuestRoute auth={auth}><AuthPage mode="register" {...shared} /></GuestRoute>} />
+        <Route path="/account" element={<ProtectedRoute auth={auth}><AccountPage {...shared} /></ProtectedRoute>} />
+        <Route path="/account/orders/:orderId" element={<ProtectedRoute auth={auth}><OrderDetailsPage orders={accountOrders} backTo="/account" title="Детали заказа" /></ProtectedRoute>} />
+        <Route path="/admin" element={<AdminRoute auth={auth}><AdminOverviewPage {...shared} /></AdminRoute>} />
+        <Route path="/admin/products" element={<AdminRoute auth={auth}><AdminProductsPage {...shared} /></AdminRoute>} />
+        <Route path="/admin/orders" element={<AdminRoute auth={auth}><AdminOrdersPage {...shared} /></AdminRoute>} />
+        <Route path="/admin/notifications" element={<AdminRoute auth={auth}><AdminNotificationsPage {...shared} /></AdminRoute>} />
+        <Route path="/403" element={<StatePage title="Доступ запрещён" text="Эта страница доступна только авторизованным пользователям с нужной ролью." />} />
+        <Route path="*" element={<StatePage title="Страница не найдена" text="Проверьте адрес или вернитесь в каталог магазина." />} />
+      </Routes>
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppShell />
+    </BrowserRouter>
   )
 }
